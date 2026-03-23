@@ -142,4 +142,4 @@ curl -X POST http://localhost:8000/api/v1/posts/1/like \
 - зберігання та відкликання refresh token
 - більш точкова інвалідація кешу
 - додавання unit-тестів
-- CI/CD та лінтери
+- CI/CD(наприклад, GitHub Actions)
