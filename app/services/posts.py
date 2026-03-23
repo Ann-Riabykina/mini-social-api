@@ -39,7 +39,13 @@ class PostService:
         await self.session.commit()
         loaded = await self.posts.get_with_likes(post.id)
         await invalidate_posts_cache(self.redis)
-        assert loaded is not None
+
+        if loaded is None:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Created post could not be loaded",
+            )
+
         return self._to_read_model(*loaded)
 
     async def list_posts(
@@ -105,7 +111,13 @@ class PostService:
         await self.session.refresh(post)
         await invalidate_posts_cache(self.redis)
         row = await self.posts.get_with_likes(post.id)
-        assert row is not None
+
+        if row is None:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Updated post could not be loaded",
+            )
+
         return self._to_read_model(*row)
 
     async def delete_post(self, post_id: int, current_user: User) -> None:

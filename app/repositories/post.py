@@ -10,14 +10,15 @@ class PostRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    def _base_query(self) -> Select:
+    def _base_query(self) -> tuple[Select, object]:
         likes_count = func.count(Like.id).label("likes_count")
-        return (
+        query = (
             select(Post, likes_count)
             .outerjoin(Like, Like.post_id == Post.id)
             .options(selectinload(Post.author))
             .group_by(Post.id)
         )
+        return query, likes_count
 
     async def create(self, *, title: str, content: str, author_id: int) -> Post:
         post = Post(title=title, content=content, author_id=author_id)
@@ -27,9 +28,8 @@ class PostRepository:
         return post
 
     async def get_with_likes(self, post_id: int) -> tuple[Post, int] | None:
-        result = await self.session.execute(
-            self._base_query().where(Post.id == post_id)
-        )
+        query, _likes_count = self._base_query()
+        result = await self.session.execute(query.where(Post.id == post_id))
         row = result.first()
         if row is None:
             return None
@@ -43,7 +43,7 @@ class PostRepository:
         search: str | None = None,
         sort: str = "created_at",
     ) -> tuple[list[tuple[Post, int]], int]:
-        query = self._base_query()
+        query, likes_count = self._base_query()
         count_query = select(func.count(Post.id))
 
         if search:
@@ -54,7 +54,7 @@ class PostRepository:
             count_query = count_query.where(criteria)
 
         if sort == "likes":
-            query = query.order_by(func.count(Like.id).desc(), Post.id.desc())
+            query = query.order_by(likes_count.desc(), Post.id.desc())
         else:
             query = query.order_by(Post.created_at.desc(), Post.id.desc())
 

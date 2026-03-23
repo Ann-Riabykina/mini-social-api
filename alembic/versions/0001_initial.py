@@ -34,10 +34,16 @@ def upgrade() -> None:
         sa.Column("content", sa.Text(), nullable=False),
         sa.Column("author_id", sa.Integer(), nullable=False),
         sa.Column(
-            "created_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
         ),
         sa.Column(
-            "updated_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
         ),
         sa.ForeignKeyConstraint(["author_id"], ["users.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
@@ -50,20 +56,19 @@ def upgrade() -> None:
         sa.Column("user_id", sa.Integer(), nullable=False),
         sa.Column("post_id", sa.Integer(), nullable=False),
         sa.Column(
-            "created_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
         ),
         sa.ForeignKeyConstraint(["post_id"], ["posts.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("user_id", "post_id", name="uq_like_user_post"),
     )
-    op.create_index(op.f("ix_likes_post_id"), "likes", ["post_id"], unique=False)
-    op.create_index(op.f("ix_likes_user_id"), "likes", ["user_id"], unique=False)
 
 
 def downgrade() -> None:
-    op.drop_index(op.f("ix_likes_user_id"), table_name="likes")
-    op.drop_index(op.f("ix_likes_post_id"), table_name="likes")
     op.drop_table("likes")
     op.drop_index(op.f("ix_posts_author_id"), table_name="posts")
     op.drop_table("posts")

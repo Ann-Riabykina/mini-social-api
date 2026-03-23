@@ -9,6 +9,14 @@ from app.repositories.like import LikeRepository
 from app.repositories.post import PostRepository
 from app.utils.cache import invalidate_posts_cache
 
+RATE_LIMIT_LUA = """
+local current = redis.call('INCR', KEYS[1])
+if current == 1 then
+    redis.call('EXPIRE', KEYS[1], ARGV[1])
+end
+return current
+"""
+
 
 class LikeService:
     def __init__(self, session: AsyncSession, redis: Redis) -> None:
@@ -20,10 +28,14 @@ class LikeService:
 
     async def _check_rate_limit(self, user_id: int) -> None:
         key = f"rate-limit:likes:{user_id}"
-        current = await self.redis.incr(key)
-        if current == 1:
-            await self.redis.expire(key, self.settings.rate_limit_window_seconds)
-        if current > self.settings.rate_limit_max_likes:
+        current = await self.redis.eval(
+            RATE_LIMIT_LUA,
+            1,
+            key,
+            self.settings.rate_limit_window_seconds,
+        )
+
+        if int(current) > self.settings.rate_limit_max_likes:
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail="Like rate limit exceeded",

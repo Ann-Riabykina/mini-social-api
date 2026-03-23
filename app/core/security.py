@@ -2,12 +2,17 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import jwt
+from jwt import PyJWTError
 from passlib.context import CryptContext
 
 from app.core.config import get_settings
 
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 ALGORITHM = "HS256"
+
+
+class TokenDecodeError(Exception):
+    pass
 
 
 def hash_password(password: str) -> str:
@@ -46,4 +51,7 @@ def create_refresh_token(subject: str) -> str:
 
 def decode_token(token: str) -> dict[str, Any]:
     settings = get_settings()
-    return jwt.decode(token, settings.secret_key, algorithms=[ALGORITHM])
+    try:
+        return jwt.decode(token, settings.secret_key, algorithms=[ALGORITHM])
+    except PyJWTError as exc:
+        raise TokenDecodeError("Invalid token") from exc
